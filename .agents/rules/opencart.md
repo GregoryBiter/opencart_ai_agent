@@ -1,9 +1,15 @@
 ---
+trigger: always_on
+---
+
+---
 name: copilot-module-rules
 description: "Use when suggesting code edits or generating files for OpenCart modules. Ограничивает изменения только папкой модуля и описывает исключения."
 applyTo:
 	- "**"
 ---
+
+# Правила Copilot для работы с модулями
 
 Короткая, однозначная инструкция для GitHub Copilot и автодополнений при работе с этим репозиторием.
 
