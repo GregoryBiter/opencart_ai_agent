@@ -1,11 +1,14 @@
 ---
 name: opencart-change-rules
-description: "Rules for determining where to make changes in OpenCart: module in dev-modules vs site-specific theme vs OpenCart core."
+description: "Rules for OpenCart 3.0.3.7+ (and ocStore 3.0.3.7+): determining where to make changes (module in dev-modules vs site-specific theme vs OpenCart core)."
 applyTo:
   - "**"
 ---
 
-# OpenCart Change Rules
+# OpenCart Change Rules (OpenCart 3.0.3.7+)
+
+> [!IMPORTANT]
+> This specification applies to **OpenCart 3.0.3.7 and higher** (including **ocStore 3.0.3.7+**).
 
 Before creating or modifying files, determine the scope of the task:
 
