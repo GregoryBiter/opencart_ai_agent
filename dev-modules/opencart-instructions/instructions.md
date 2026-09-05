@@ -1,58 +1,39 @@
 ---
 name: opencart-instructions
-description: "Инструкция для агента: как работать с OpenCart в этом репозитории и где вносить изменения"
+description: "Agent instructions: OpenCart development workflow, scope separation, and code conventions."
 applyTo: dev-modules/**
 ---
 
-Цель
---
-Краткие, ясно формулированные правила для взаимодействия с кодовой базой OpenCart в репозитории. Используется агентом как постоянная инструкция при выполнении задач, связанных с OpenCart.
+## Purpose
+Clear, unambiguous rules for interacting with the OpenCart codebase in this repository. Used by AI agents as a persistent instruction set.
 
-Область применения
---
-- Применяется для запросов, связанных с добавлением функциональности, правкой шаблонов, локализацией, миграциями и созданием модулей OpenCart.
-- НЕ менять файлы в папке `opencart` напрямую. Все изменения должны быть реализованы через модуль в `dev-modules/<имя_модуля>/upload` или через OCMOD/extension.
+## Scope of Application
+- Applies to requests involving module development, custom site/theme tweaks, localization, and extensions.
+- Scope separation:
+  1. Reusable module logic: ONLY in `dev-modules/<module_name>/upload/`.
+  2. Site-specific theme tweaks: permitted in `catalog/view/theme/<theme_name>/` and project stylesheets.
+  3. OpenCart Core: direct edits to core files are prohibited without explicit user approval.
 
-Ключевые правила
---
-- Изменения ядра: запрещены. Предлагать OCMOD/extension/модуль вместо правок core.
-- Место для модулей: всегда создавать структуру установки внутри `dev-modules/<module>/upload` — это потом упаковочный артефакт для установки в OpenCart.
-- OCMOD: если нужно изменить поведение существующего контроллера/шаблона — генерируй `ocmod.xml` и инструкции установки. Проверяй `system/storage/modification` на предмет конфликтов.
-- Архитектура: OpenCart — MVC-L (controllers/models/views + language). Укажи, какие файлы правишь: `admin/controller/...`, `catalog/controller/...`, `admin/view/template/...`, `catalog/view/theme/...`, `admin/language/...`.
-- Языковые строки: добавляй ключи в соответствующие языковые файлы (admin и catalog).
-- События и расширения: предпочитай события (event system) и расширения вместо core-патчей.
+## Key Rules
+- Core Modifications: Prohibited. Prefer the native Event System or targeted OCMOD instead of core edits.
+- Module Workspace: Always maintain the installable tree within `dev-modules/<module>/upload/`.
+- OCMOD: If modifying standard controller/template behavior without events, author `install.xml` in the module. Validate syntax with `php .agents/skills/ocmod/scripts/validate_ocmod.php`.
+- Architecture: OpenCart follows MVC-L (controllers, models, views + languages). Explicitly specify target files: `admin/controller/...`, `catalog/controller/...`, `admin/view/template/...`, `catalog/view/theme/...`, `admin/language/...`.
+- Events: Use the OpenCart 3 Event System for action hooks and view data injection (refer to skill `opencart-events`).
+- Languages: Add translation keys to language arrays in both `en-gb` and `ru-ru`.
 
-Короткое техническое резюме (для быстрого напоминания)
---
-- Контроллеры: `admin/controller/` и `catalog/controller/` — бизнес-логика.
-- Модели: `model/` — доступ к данным.
-- Вью: `view/template/` или `view/theme/...` — шаблоны Twig/ocTemplate.
-- Языки: `language/<lang>/...` — строки интерфейса.
-- Модификации: OCMOD лежит в панели расширений; итоговые файлы попадают в `system/storage/modification`.
+## Technical Summary
+- Controllers: `admin/controller/` and `catalog/controller/` — request handling and business logic.
+- Models: `model/` — database queries via `$this->db`.
+- Views: `view/template/` (admin) and `view/theme/<theme>/template/` (storefront) — Twig templates.
+- Languages: `language/<lang>/...` — interface strings.
+- Modifications: OCMOD modifiers are compiled into `system/storage/modification/`.
 
-Шаблон структуры модуля (внутри `dev-modules/<module>/upload`)
---
-- upload/admin/controller/<module>/...
-- upload/catalog/controller/<module>/...
-- upload/admin/language/<lang>/<module>.php
-- upload/catalog/language/<lang>/<module>.php
-- upload/admin/view/template/<module>/...
-- upload/catalog/view/theme/default/template/<module>/...
-- install.xml или system/<module>.ocmod.xml (если нужны модификации)
-
-Уточняющие вопросы (если нужно)
---
-- Изменения должны применяться ко всему проекту или только к конкретному модулю? Укажите имя модуля, если есть.
-- Нужен ли обратный путь (rollback) или миграция данных при установке модуля?
-- На каких версиях OpenCart нужно гарантировать совместимость?
-
-Итерация и проверка
---
-1. Драфт инструкции готов (этот файл).
-2. Уточнить ответы на вопросы выше.
-3. Финализировать инструкцию и добавить примеры `ocmod.xml` и минимальный `install` скрипт в `dev-modules/<module>/upload` по запросу.
-
-Подсказка для разработчика (коротко)
---
-- Всегда предлагай решение через модуль/OCMOD; не редактируй `opencart` директорию.
-- Документируй изменения и включай пример установки (шаги) и отката.
+## Standard Module Layout (`dev-modules/<module>/upload`)
+- `upload/admin/controller/extension/module/<module>.php`
+- `upload/catalog/controller/extension/module/<module>.php`
+- `upload/admin/language/en-gb/extension/module/<module>.php`
+- `upload/catalog/language/en-gb/extension/module/<module>.php`
+- `upload/admin/view/template/extension/module/<module>.twig`
+- `upload/catalog/view/theme/default/template/extension/module/<module>.twig`
+- `install.xml` (if core modification is necessary)

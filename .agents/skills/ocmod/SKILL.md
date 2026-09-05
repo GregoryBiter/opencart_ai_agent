@@ -1,145 +1,146 @@
 ---
 name: ocmod-writing
-description: "Практическое руководство по написанию OCMOD XML с учётом однострочного поиска и особенностей OpenCart."
+description: "Practical guide to authoring OCMOD XML patches taking into account single-line search, regex, and OpenCart specific constraints."
 ---
 
-# OCMOD — как писать корректные XML-патчи
+# OCMOD — How to Author Reliable XML Patches
 
-Цель: дать краткие, проверяемые правила и примеры для создания OCMOD-файлов, которые надёжно применяются в OpenCart.
+Goal: Provide concise, verifiable rules and examples for creating OCMOD files that apply reliably in OpenCart.
 
-1) Коротко о формате
-- Основная структура:
+---
 
-```
+## 1. Format Structure
+
+```xml
 <modification>
-  <name>...</name>
-  <code>unique_code</code>
+  <name>Module Name</name>
+  <code>author_module_code</code>
   <version>1.0</version>
   <author>Author</author>
-  <file path="catalog/.../file.php">
+  <file path="catalog/controller/product/product.php">
     <operation>
-      <search><![CDATA[...]]></search>
+      <search trim="true"><![CDATA[...]]></search>
       <add position="replace|before|after"><![CDATA[...]]></add>
     </operation>
   </file>
 </modification>
 ```
 
-2) Однострочный поиск — ключевое ограничение
-- OpenCart OCMOD выполняет поиск по строкам: содержимое `<search>` должно соответствовать одной строке в исходном файле. Это значит:
-  - Не пытайтесь искать многострочные фрагменты в `<search>` — они не сработают.
-  - Если целевой код может быть в одной строке с разным количеством пробелов, используйте регулярные выражения (см. пункт 3) или пишите поиск с учётом возможных пробелов.
+---
 
-3) Регулярные выражения
-- Если нужен гибкий поиск, используйте `regex="true"` в элементе `<search>` (если платформа поддерживает):
+## 2. Single-Line Search: Core Constraint
 
-```
+OpenCart OCMOD performs line-by-line searches. The content of `<search>` must match a single line in the source file:
+* **Do NOT search multi-line blocks** in standard `<search>` — it will fail to match.
+* If surrounding whitespace or indentation varies, use `trim="true"` or regex search.
+
+---
+
+## 3. Regular Expressions
+
+When matching dynamic code or variable spacing, set `regex="true"` on `<search>`:
+
+```xml
 <search regex="true"><![CDATA[\$this->response->setOutput\(\$this->load->view\('product/product', \$data\)\);]]></search>
 ```
 
-- При использовании regex:
-  - Экранируйте слэши и специальные символы.
-  - Для пробелов используйте `\s+` или `\s*`.
-  - Ограничьте регулярное выражение так, чтобы оно оставалось однострочным.
+Rules for regex:
+* Escape slashes, brackets, and dollar signs: `\$`, `\(`, `\)`.
+* Use `\s+` or `\s*` for flexible whitespace matching.
+* Ensure the regex is contained within a single logical line.
 
-4) CDATA и вставляемый код
-- Оборачивайте код в `<![CDATA[ ... ]]>`, чтобы не ломать XML-структуру при наличии символов `<`, `&` и т.п.
-- Пример вставки:
+---
 
-```
-<add position="after"><![CDATA[
-  // Дополнительный вызов логирования
-  $this->log->write('product view');
-]]></add>
-```
+## 4. CDATA Wrapping
 
-5) Позиции вставки
-- `position="before"` — вставляет перед найденной строкой.
-- `position="after"` — вставляет после найденной строки.
-- `position="replace"` — заменяет найденную строку полностью.
+Always wrap search and replacement code in `<![CDATA[ ... ]]>` to prevent breaking the XML parser when handling `<`, `>`, `&`, or PHP tags:
 
-6) Практические рекомендации
-- Сначала найдите точную строку в исходном файле (или минимально-уникальную часть строки) и копируйте её в `<search>`.
-- Если строка генерируется сборщиком/минифицирована (всё в одной строке), используйте regex с `\s*` и жёсткими якорями, например `^` и `$`.
-- Для PHP-кода используйте контекстные вызовы (например, строка с `$this->response->setOutput(...)`), а не части выражения.
-- Добавляйте `<![CDATA[]]>` вокруг вставляемого PHP/HTML.
-- Тестируйте OCMOD локально: положите XML в `dev-modules/<имя_модуля>/upload/system/` или `system/` и выполните установку через админку или `ocm install`, затем Refresh модификаций.
-
-7) Проверка и откат
-- Обновите Modifications → Refresh и очистите кеш шаблонов/кэша.
-- При ошибках удалите OCMOD через админку и восстановите файлы из репозитория (или пересоздайте). Держите резервную копию изменяемых файлов.
-
-8) Метаданные и уникальность
-- Поле `<code>` должно быть уникальным для модификации — это облегчает поиск и откат.
-- Используйте префикс: `автор_название_модуля`. Избегайте коротких имён вроде `test` или `fix`.
-- Всегда указывайте `<version>` и `<link>` — это помогает при поддержке через время.
-
-9) Стратегия поиска и атрибуты `<search>`
-- **Уникальность**: ищите максимально специфичный фрагмент, а не `<?php` или `</div>`.
-- **Атрибут `index`**: если нужная строка встречается несколько раз, используйте `<search index="2">` (отсчёт с нуля).
-- **Атрибут `trim="true"`**: всегда добавляйте — пробелы/табуляция в начале/конце строки не будут ломать поиск.
-- **Минимум кода в поиске**: чем длиннее строка поиска, тем выше шанс, что другой модуль её изменит и поиск провалится.
-
-10) Стратегия вставки (`<add>`)
-- Предпочитайте `position="before"` или `position="after"` вместо `position="replace"` — полная замена является главной причиной конфликтов.
-- Если вставляете много кода, вынесите логику в отдельный контроллер или helper-метод, а в OCMOD лишь вызовите его одной строкой.
-
-11) Порядок применения и зависимости
-- Модификаторы применяются в алфавитном порядке по `<code>`. Если ваш модуль зависит от другого, убедитесь, что ваш `<code>` идёт позже.
-- Если проект использует и VQMod, и OCMOD: VQMod применяется **первым**, OCMOD работает уже с его результатом — учитывайте это при поиске строк.
-
-12) Чек-лист безопасного разработчика
-- После каждого «Refresh» модификаций заглядывайте во вкладку **Logs** в админке. Надпись `NOT FOUND!` означает, что модификатор не применился.
-- **Никогда не редактируйте** файлы в `system/storage/modification/` — они исчезнут после следующего «Refresh».
-- Если правку можно реализовать через **Events** (события) OpenCart 3 — используйте события. OCMOD — крайняя мера для мест, где события не предусмотрены.
-
-13) Пример идеальной операции
 ```xml
-<operation error="skip">
-  <search trim="true"><![CDATA[$data['footer'] = $this->load->controller('common/footer');]]></search>
-  <add position="after"><![CDATA[$data['my_custom_var'] = 'Hello World';]]></add>
-</operation>
-```
-
-14) Частые ошибки и как их избежать
-- Поиск не сработал из-за пробелов/табуляции — используйте `trim="true"` или `\s` в regex.
-- Поиск не сработал, потому что строка была объединена в одну после минификации — используйте regex или поместите поиск в месте, где код гарантированно имеет стабильный вид.
-- Не уникальная строка поиска — добавьте `index="N"` для выбора нужного вхождения.
-- Использован `position="replace"`, конфликтующий с другим модулем — переходите на `before`/`after`.
-- Забыл CDATA — XML сломается при вставке `<?php` или `<`.
-- Неправильный regex — «роняет» генерацию кэша модификаторов; всегда тестируйте локально.
-- Слишком длинная строка поиска — другой модуль изменил её, и ваш патч не нашёл совпадений.
-
-15) Примеры
-- Простой replace (однострочный поиск):
-
-```
-<file path="catalog/controller/product/product.php">
-  <operation>
-    <search><![CDATA[$this->response->setOutput($this->load->view('product/product', $data));]]></search>
-    <add position="replace"><![CDATA[// модифицированный вывод
-$this->response->setOutput($this->load->view('product/product', $data));
+<add position="after"><![CDATA[
+  // Custom logging call
+  $this->log->write('Product view hook');
 ]]></add>
+```
+
+---
+
+## 5. Insertion Positions (`position`)
+
+* `position="before"` — Inserts code immediately before the matched line.
+* `position="after"` — Inserts code immediately after the matched line.
+* `position="replace"` — Completely replaces the matched line.
+
+---
+
+## 6. Search Strategy & Attributes
+
+* **Uniqueness:** Choose an anchor line that appears uniquely within the target method, not generic tags like `<?php` or `</div>`.
+* **Attribute `trim="true"`:** Always include `trim="true"` — leading and trailing spaces/tabs will not break the search.
+* **Attribute `index="N"`:** If a line occurs multiple times and you need a specific occurrence, use `<search index="1">` (zero-indexed).
+* **Minimal Search Scope:** Keep the search string as short and specific as possible to minimize conflict with other modules.
+
+---
+
+## 7. Insertion Strategy (`<add>`)
+
+* Prefer `position="before"` or `position="after"` over `position="replace"`. Full replacement is the #1 cause of third-party module conflicts.
+* If adding significant business logic, place it in an external helper/controller and call it with a single line in `<add>`.
+
+---
+
+## 8. Modifier Precedence & VQMod
+
+* OCMOD modifiers execute in alphabetical order by their `<code>` tag.
+* If a project uses both VQMod and OCMOD: VQMod executes **first**, and OCMOD processes the resulting output.
+
+---
+
+## 9. Safe Developer Checklist
+
+* After every refresh, check `system/storage/logs/ocmod.log` (or Admin → Modifications → Log). Any `NOT FOUND!` indicates a failed match.
+* **Never edit** files in `system/storage/modification/` directly; they will be overwritten on the next refresh.
+* Whenever possible, prefer **Events** over OCMOD.
+
+---
+
+## 10. Example Operations
+
+### Example A: Safe insertion after output call
+```xml
+<file path="catalog/controller/product/product.php">
+  <operation error="skip">
+    <search trim="true"><![CDATA[$data['footer'] = $this->load->controller('common/footer');]]></search>
+    <add position="after"><![CDATA[$data['my_custom_var'] = 'Hello World';]]></add>
   </operation>
 </file>
 ```
 
-- Regex-пример с гибкими пробелами:
-
-```
+### Example B: Regex search with flexible spacing
+```xml
 <file path="catalog/controller/checkout/checkout.php">
   <operation>
     <search regex="true"><![CDATA[\$this->session->data\['order_id'\];]]></search>
     <add position="after"><![CDATA[
-      // логирование номера заказа
-      $this->log->write('Order: ' . $this->session->data['order_id']);
+      $this->log->write('Order ID: ' . $this->session->data['order_id']);
     ]]></add>
   </operation>
 </file>
 ```
 
-16) Размещение и установка
-- OCMOD можно хранить в модуле: `dev-modules/<имя_модуля>/upload/system/<имя>.ocmod.xml` или положить в `system/`.
-- После развертывания выполните `ocm install` (если доступна) или загрузите XML через админку и выполните Refresh модификаций.
+---
 
-Если хотите, добавлю шаблон OCMOD XML-файла в репозиторий или генератор шаблонов для модулей.
+## 11. Location & Deployment
+
+* Place `install.xml` in the module root (for packaging into `*.ocmod.zip`) or in `dev-modules/<module>/upload/system/<name>.ocmod.xml`.
+* With OCM CLI, running `ocm dev` or `ocm install` automatically synchronizes the modifier to the database (`oc_modification`) and recompiles the modification cache.
+
+---
+
+## 12. Automated OCMOD Validation
+
+Use the built-in standalone validator script to detect common errors (multi-line search, missing CDATA, dangerous replacements, regex syntax):
+
+```bash
+php .agents/skills/ocmod/scripts/validate_ocmod.php dev-modules/<module_name>/install.xml
+```
+Always run this check before committing or packaging releases.

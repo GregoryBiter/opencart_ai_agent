@@ -1,16 +1,15 @@
-# CONTRIBUTING — работа с модулем
+# CONTRIBUTING — Working with Modules
 
-Короткая инструкция для разработчиков и GitHub Copilot при работе с модулями.
+Brief guidelines for developers and AI assistants when working on OpenCart modules.
 
-- Изменять файлы ТОЛЬКО в `dev-modules/<имя_модуля>/upload`.
-- Структура модуля в `upload` должна отражать структуру OpenCart: `catalog/...`, `admin/...` и т.д.
-- НЕЛЬЗЯ вносить изменения напрямую в папку `opencart` — её можно только просматривать для понимания логики.
-- Готовые/применённые OCMOD файлы можно посмотреть в `system/storage/modification`.
-- Все изменения происходят в папке модуля и затем автоматически копируются/применяются в OpenCart — не дублируйте правки в `opencart`.
-- Перед коммитом убедитесь, что `git status` показывает изменения только внутри `dev-modules/<имя_модуля>/upload`.
+- Edit module files ONLY in `dev-modules/<module_name>/upload/`.
+- The `upload/` structure must strictly mirror OpenCart: `catalog/...`, `admin/...`, `system/...`.
+- DO NOT modify installed module files directly in the OpenCart root — root files are for inspection only.
+- Compiled OCMOD files in `system/storage/modification/` are read-only.
+- All module changes originate in `dev-modules/<module_name>/` and are deployed to OpenCart via `ocm install` or `ocm dev`.
+- Prior to committing, verify with `git status` that changes are restricted to `dev-modules/<module_name>/`.
 
-Рекомендации:
-- Для локальной проверки используйте `diff` между `dev-modules/<имя_модуля>/upload` и соответствующими файлами в OpenCart.
-- В PR указывайте имя модуля и краткое описание изменений.
-
-Если нужно — скопируйте этот файл в папку конкретного модуля и замените `<имя_модуля>` на реальное имя.
+Recommendations:
+- Use `diff` between `dev-modules/<module_name>/upload` and the corresponding files in OpenCart root.
+- Validate module integrity with `php .agents/skills/opencart-module-scaffolding/scripts/check_module.php dev-modules/<module_name>`.
+- In Pull Requests, state the module name and a concise summary of changes.

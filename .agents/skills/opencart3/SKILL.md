@@ -1,71 +1,55 @@
 ---
 name: opencart-3-workflow
-description: "Краткая практическая инструкция: как работать с OpenCart 3, его архитектурой и OCMOD (модификации)."
+description: "Practical guide: OpenCart 3 architecture, MVC-L workflow, and modification management."
 ---
 
-# OpenCart 3 — Быстрый навигатор для разработчика
+# OpenCart 3 Developer Navigator
 
-Цель: дать понятную, повторяемую процедуру для разработки, отладки и развёртывания изменений в OpenCart 3 и управления модификациями через OCMOD.
+Concise, reproducible workflow for developing, debugging, and deploying extensions in OpenCart 3.
 
-1) Структура и роли
-- `catalog/` — фронтенд (клиентская часть).
-- `admin/` — панель администратора (контроллеры, модели, виды).
-- `system/` — ядро: библиотека, storage, modification, config.
-- MVC-L: контроллеры (`controller/*`), модели (`model/*`), шаблоны/виды (`view/*` — Twig/OC template).
-- Языковые файлы в `language/*`.
+---
 
-2) Где правим исходники
-- Разработку модулей вести в `dev-modules/<имя_модуля>/upload` (структура в `upload` должна повторять `catalog/` и `admin/`).
-- НЕЛЬЗЯ править файлы напрямую в `opencart` (root OpenCart) — можно только просматривать для понимания.
+## 1. Structure & Architecture
 
-3) OCMOD (модификации)
-- OCMOD — XML-патчи, которые модифицируют поведение без правки ядра.
-- Места хранения применённых модификаций: `system/storage/modification`.
-- Для создания/обновления OCMOD: положите XML в модуль или загрузите через админ-панель, затем очистите кеш модификаций и примените.
- - Для создания/обновления OCMOD: положите XML в модуль или загрузите через админ-панель, затем очистите кеш модификаций и примените.
- - OCMOD-файлы также можно размещать в `system/` (например `system/<имя_модуля>.ocmod.xml`) или в `dev-modules/<имя_модуля>/upload/system/` — при установке/развёртывании модуля такие файлы будут доступны для установки. Всё равно после добавления/обновления нужно выполнить Refresh модификаций.
+* `catalog/` — Client-facing storefront.
+* `admin/` — Back-office administrative interface.
+* `system/` — Core framework, engine, libraries, storage, modifications, config.
+* Architecture: **MVC-L**
+  * Controllers: `controller/*` (business logic, request handling).
+  * Models: `model/*` (database interactions).
+  * Views: `view/*` (Twig templates in OC3).
+  * Languages: `language/*` (UI translation arrays).
 
-4) Локальная проверка и развёртывание модуля
-- В папке модуля выполните `ocm install` (если в проекте есть утилита `ocm`) — это применит/скопирует файлы из `dev-modules/<имя_модуля>/upload` в рабочий OpenCart.
-- После установки обновите кеш модификаций и шаблонов в админке (Extensions → Modifications → Refresh, and Dashboard → Gear → Refresh Cache).
-- Проверяйте результат в `system/storage/modification` и логах (`system/storage/logs/`).
+---
 
-5) Отладка и полезные приёмы
-- Для поиска точек входа используйте структуру маршрутов: контроллер → модель → view.
-- При ошибках OCMOD смотрите логи модификаций и временные файлы в `system/storage/modification`.
+## 2. Where to Edit Source Code
 
-5.a) `system/library` — назначение и неймспейсы
-- `system/library` содержит общие библиотеки и классы ядра OpenCart. По умолчанию OpenCart не следует PSR-4/именованным пространствам для своих core-классов — он использует собственный загрузчик (`Loader`/`Registry`).
-- Рекомендации:
-	- Не изменяйте напрямую файлы в корневом `system/library` — это приводит к коллизиям и потерям при обновлении.
-	- Если нужен общий класс/библиотека для модуля, размещайте её внутри модуля: `dev-modules/<имя_модуля>/upload/system/library/<vendor>/<package>/...` и загружайте через стандартный `load->library()` или регистрируйте автозагрузчик.
-	- При использовании неймспейсов предпочитайте Composer/автозагрузчик: добавьте зависимости в `vendor/` и регистрируйте автозагрузку, либо используйте уникальный префикс/неймспейс, чтобы избежать конфликтов с ядром и другими модулями.
-	- Избегайте переопределения core-классов в `system/library`; вместо этого создавайте отдельные namespaced-классы и инжектируйте их через registry/DI.
+* Module development happens strictly in `dev-modules/<module_name>/upload/`.
+* The `upload/` folder mirrors the OpenCart directory tree (`admin/`, `catalog/`, `system/`).
+* DO NOT edit files directly in OpenCart root for module functionality.
+* Use OCM CLI (`ocm install` or `ocm dev`) to synchronize changes into the runtime.
 
-6) Практические правила команды
-- Все исходные правки модулей — только в `dev-modules/<имя_модуля>/upload`.
-- Не дублируйте изменения в `opencart` — модуль или OCMOD должен обеспечивать изменение.
-- Для PR включайте только файлы из `dev-modules/<имя_модуля>/upload` и OCMOD (если требуется), указывайте в описании: "Изменения через модуль <имя_модуля>".
+---
 
-7) Контроль качества перед PR
-- Запустите `git status` и убедитесь, что изменения лежат только в `dev-modules/<имя_модуля>`.
-- Протестируйте сценарии: установка модуля, применение OCMOD, ключевые пользовательские пути (checkout, product view и т.д.).
+## 3. Core Libraries (`system/library/`)
 
-8) Частые ошибки и как их избегать
-- Прямая правка ядра — приводит к утрате изменений при обновлении. Решение: OCMOD или модуль.
-- Несовпадение путей в `upload` и OpenCart — файл не применяется. Решение: повторяйте точную структуру (`admin/controller/...`, `catalog/view/...`).
+* `system/library/` houses core framework classes.
+* Avoid modifying existing core classes.
+* For custom module libraries, place them inside your module:
+  `dev-modules/<module_name>/upload/system/library/<vendor>/<package>/...`
+  and load via `$this->load->library(...)` or standard PSR-4 autoloading.
 
-Примеры команд
-- Установить/обновить модуль (в папке модуля):
+---
 
-```
-ocm install
-```
+## 4. Quality Control & Checklist
 
-- Очистить кеш и применить модификации — через админку (Modifications → Refresh) или вручную удалить кеш в `system/storage/cache` и `system/storage/modification` где применимо.
-
-Подсказки для Copilot / агентов:
-- Предлагай изменения и новые файлы только внутри `dev-modules/<имя_модуля>/upload`.
-- Если нужен пример OCMOD — генерируй валидный XML с описанием цели и точками вставки, и указывай, что файл нужно положить в модуль и установить через админку или `ocm install`.
-
-Если нужно — расширим этот навигатор чеклистом для PR или шаблоном OCMOD XML.
+1. Verify `git status`: Ensure changed files reside only in `dev-modules/<module_name>/` (unless deliberate site theme customizations were requested).
+2. Validate module integrity:
+   ```bash
+   php .agents/skills/opencart-module-scaffolding/scripts/check_module.php dev-modules/<module_name>
+   ```
+3. Validate OCMOD if `install.xml` is used:
+   ```bash
+   php .agents/skills/ocmod/scripts/validate_ocmod.php dev-modules/<module_name>/install.xml
+   ```
+4. Test lifecycle actions: install, edit settings, view frontend display, uninstall.
